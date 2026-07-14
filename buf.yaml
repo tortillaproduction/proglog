@@ -1,0 +1,5 @@
+version: v1
+lint:
+  ignore_only:
+    # PACKAGE_DIRECTORY_MATCH 警告を完全に無視する
+    - PACKAGE_DIRECTORY_MATCH
