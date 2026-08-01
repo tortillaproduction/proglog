@@ -12,6 +12,7 @@ import (
 	api "github.com/tortillaproduction/proglog/api/v1"
 	"github.com/tortillaproduction/proglog/internal/agent"
 	"github.com/tortillaproduction/proglog/internal/config"
+	"github.com/tortillaproduction/proglog/internal/loadbalance"
 	"github.com/travisjeffery/go-dynaport"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
@@ -94,6 +95,9 @@ func TestAgent(t *testing.T) {
 	)
 	require.NoError(t, err)
 
+	// wait for replication
+	time.Sleep(3 * time.Second)
+
 	consumeResponse, err := leaderClient.Consume(
 		context.Background(),
 		&api.ConsumeRequest{
@@ -102,8 +106,6 @@ func TestAgent(t *testing.T) {
 	)
 	require.NoError(t, err)
 	require.Equal(t, consumeResponse.Record.Value, []byte("foo"))
-
-	time.Sleep(3 * time.Second)
 
 	followerClient := client(t, agents[1], peerTLSConfig)
 	consumeResponse, err = followerClient.Consume(
@@ -141,7 +143,11 @@ func client(
 	rpcAddr, err := agent.Config.RPCAddr()
 	require.NoError(t, err)
 
-	conn, err := grpc.NewClient(rpcAddr, opts...)
+	conn, err := grpc.NewClient(fmt.Sprintf(
+		"%s:///%s",
+		loadbalance.Name,
+		rpcAddr,
+	), opts...)
 	require.NoError(t, err)
 
 	client := api.NewLogClient(conn)
